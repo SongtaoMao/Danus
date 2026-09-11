@@ -3,10 +3,9 @@
 # Danus services — start/stop/inspect the long-running services so they PERSIST
 # beyond the session that launched them (a codex session, an ssh shell…).
 #
-# Why setsid: a plain `… &` background job started from a transient shell gets
-# reaped when that shell exits. `setsid` puts the service in its OWN session
-# (reparented to init), with stdio detached — so it keeps running after the
-# codex session ends / the laptop disconnects.
+# Start each service in its own session with stdio detached, so it keeps
+# running after the codex session ends / the laptop disconnects. Linux uses
+# `setsid`; macOS uses Python's equivalent because it has no setsid command.
 #
 #   bash scripts/services.sh up   verify
 #   bash scripts/services.sh up   dashboard <project>
@@ -29,14 +28,27 @@ AUTO="$RUN/autostart"
 _auto_add(){ touch "$AUTO"; grep -qxF "$1" "$AUTO" 2>/dev/null || echo "$1" >> "$AUTO"; }
 _auto_del(){ [ -f "$AUTO" ] || return 0; grep -vxF "$1" "$AUTO" > "$AUTO.tmp" 2>/dev/null || true; mv -f "$AUTO.tmp" "$AUTO" 2>/dev/null || true; }
 
-# _spawn <name> <command…> : detach via setsid; the inner shell records its own
-# pid then exec's the service, so the pidfile holds the real service pid (exec
-# preserves the pid down the start-*.sh → python chain).
+# _spawn <name> <command…> : detach into a new session, record the session
+# leader's pid, then exec the service. The pidfile holds the real service pid
+# (exec preserves it down the start-*.sh → python chain). Pass argv intact so
+# repo paths and project names do not become shell code.
 _spawn(){
   local name="$1"; shift
   local pf; pf="$(_pf "$name")"
   if _alive "$name"; then echo "[$name] already up (pid $(cat "$pf"))"; return 0; fi
-  setsid bash -c "echo \$\$ > '$pf'; exec $*" >"$LOG/$name.log" 2>&1 </dev/null &
+  if command -v setsid >/dev/null 2>&1; then
+    setsid bash -c 'printf "%s\n" "$$" > "$1"; shift; exec "$@"' _ "$pf" "$@" >"$LOG/$name.log" 2>&1 </dev/null &
+  else
+    "$DANUS_PY" -c '
+import os
+import sys
+
+os.setsid()
+with open(sys.argv[1], "w") as pidfile:
+    pidfile.write(str(os.getpid()) + "\n")
+os.execvp(sys.argv[2], sys.argv[2:])
+' "$pf" "$@" >"$LOG/$name.log" 2>&1 </dev/null &
+  fi
   sleep 1
   if _alive "$name"; then echo "[$name] up (pid $(cat "$pf"); log: runtime/logs/$name.log)";
   else echo "[$name] FAILED to start — see runtime/logs/$name.log"; tail -5 "$LOG/$name.log" 2>/dev/null; return 1; fi
@@ -57,9 +69,9 @@ case "${1:-}" in
   up)
     svc="${2:?usage: services.sh up verify|dashboard <project>}"
     case "$svc" in
-      verify)    _spawn verify    "bash '$DANUS_ROOT/scripts/start-verify.sh'" && _auto_add "verify" ;;
+      verify)    _spawn verify    bash "$DANUS_ROOT/scripts/start-verify.sh" && _auto_add "verify" ;;
       dashboard) proj="${3:?usage: services.sh up dashboard <project>}"
-                 _spawn "dashboard-$proj" "bash '$DANUS_ROOT/scripts/start-dashboard.sh' '$proj'" && _auto_add "dashboard $proj" ;;
+                 _spawn "dashboard-$proj" bash "$DANUS_ROOT/scripts/start-dashboard.sh" "$proj" && _auto_add "dashboard $proj" ;;
       *) echo "unknown service: $svc"; exit 1 ;;
     esac ;;
   down)

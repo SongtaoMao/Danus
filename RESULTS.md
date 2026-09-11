@@ -13,5 +13,6 @@
 - The local verify service started successfully; its `/health` PID matches its own pidfile. Every `doctor.sh` check passes, including ChatGPT authentication, Python, Node, Codex, LaTeX, and Chrome.
 - The report renderer's markdown-it and KaTeX dependencies import successfully.
 - VS Code task JSON is valid and the project Python interpreter is selected. Local settings, dependencies and credentials remain ignored.
+- Launched `Danus: 启动` in the VS Code terminal and visually confirmed Codex is ready for input in this repository (gpt-5.6-sol, ultra). Disabled Python extension auto-activation for this workspace so it cannot insert shell activation commands into the Codex input box.
 - No mathematical project, worker, proof verification request, or model inference has been started. Full mathematical runs and PDF generation have not been exercised.
 - Setup source and this result are synchronized on branch `codex-macos-vscode-setup`; the original `codex` branch is unchanged.

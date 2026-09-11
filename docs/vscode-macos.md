@@ -2,7 +2,12 @@
 
 在 VS Code 打开 Danus 文件夹，终端使用 Bash 运行以下命令。
 
-首次安装（Python 3.12、Node 22、Codex 和依赖均位于 `runtime/`）：
+如果环境已经配置好，直接跳到“日常启动及检查”。本次配置复用了本机现有的
+Python、Node 和 Codex：`runtime/runtime.env` 记录这些本机路径，
+`DANUS_CODEX_NATIVE` 可让启动包装器使用现有的 Codex 二进制文件。
+若桌面应用更新后移动了这些路径，重新设置路径或执行下方独立安装流程。
+
+独立首次安装（需已有可用的 `python3 -m pip`；Python 3.12、Node 22、Codex 和依赖均位于 `runtime/`）：
 
 ```bash
 bash scripts/bootstrap-macos.sh

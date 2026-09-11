@@ -18,6 +18,7 @@
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DANUS_ROOT="$(cd "$HERE/.." && pwd)"
+cd "$DANUS_ROOT"
 RT="$DANUS_ROOT/runtime"
 NODE_VERSION="${NODE_VERSION:-v22.14.0}"
 ARCH="$(uname -m)"; case "$ARCH" in x86_64) NARCH=x64;; aarch64|arm64) NARCH=arm64;; *) echo "Unsupported architecture: $ARCH" >&2; exit 1;; esac
